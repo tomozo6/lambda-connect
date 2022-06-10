@@ -1,0 +1,26 @@
+[
+    {
+        "start_day": 1,
+        "end_day": 9,
+        "phone_number": [
+            "+bbbbbbbbbbb",
+            "+ccccccccccc"
+        ]
+    },
+    {
+        "start_day": 10,
+        "end_day": 19,
+        "phone_number": [
+            "+ddddddddddd",
+            "+eeeeeeeeeee"
+        ]
+    },
+    {
+        "start_day": 20,
+        "end_day": 31,
+        "phone_number": [
+            "+fffffffffff",
+            "+ggggggggggg"
+        ]
+    }
+]

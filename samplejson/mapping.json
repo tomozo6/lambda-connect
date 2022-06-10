@@ -1,0 +1,10 @@
+[
+    {
+        "sns_topic_name": "a-topic" ,
+        "phone_number_json_file": "a-phoneNumber.json"
+    },
+    {
+        "sns_topic_name": "b-topic" ,
+        "phone_number_json_file": "b-phoneNumber.json"
+    }
+]

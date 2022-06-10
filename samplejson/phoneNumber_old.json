@@ -1,0 +1,18 @@
+{
+    "group1": {
+        "start_day": 1,
+        "end_day": 15,
+        "phone_number": [
+            "+81xxxxxxxxxx",
+            "+81xxxxxxxxxx"
+        ]
+    },
+    "group2": {
+        "start_day": 16,
+        "end_day": 31,
+        "phone_number": [
+            "+81xxxxxxxxxx",
+            "+81xxxxxxxxxx"
+        ]
+    }
+}
