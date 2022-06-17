@@ -2,9 +2,9 @@
 
 Amazon Connectを使用し、指定された電話番号へ電話をかけアラートメッセージを読み上げます。
 
-## 要件(ユーザーストーリー)
+## 要件
 
-|だれが|何をしたい|それはなぜか|実装Status|
+|だれから|何をしたい|それはなぜか|実装Status|
 |:--|:--|:--|:--:|
 |プロダクトオーナー|障害時、当番の人にコールしたい。|障害にすぐ気づいて復旧してほしいため。|✅|
 |保守リーダー|障害が発生した案件ごとにコール先(当番表)を分けてほしい。|案件毎に担当者が違う可能性があり、かつ複数案件が1つのAWSアカウント内にある場合もある。関係無い人にコールをしたくないため。|未|
@@ -16,34 +16,37 @@ Amazon Connectを使用し、指定された電話番号へ電話をかけアラ
 |当番メンテナー|プログラムを変更せずに当番を変更したい。|当番は変更頻度が高いが、そのたびにプログラムリリースするのは面倒なため。|✅|
 |当番メンテナー|当番変更後に、コールはしないテストをしたい。|当番変更作業にミスがないか確認するため。実際にコールが発生すると当番に迷惑がかかるため。|未|
 
+保守リーダーAと保守リーダーBの要件は同時には実現できない内容なので、simpleモードとmappingモードとして、モードを任意に切り替えられるようにしています。
+
 ## 想定構成図
 
 ### simpleモード
 
-1つのAWSアカウント内で、当番表が1つで済み場合。
+1つのAWSアカウント内で、当番表が1つで済み場合は以下のような構成になります。
 
 ![simple](./assets/simple.dio.svg)
 
 ### mappingモード
 
-1つのAWSアカウント内に複数案件があり、案件ごとに当番表を分けたい場合。
+1つのAWSアカウント内に複数案件があり、案件ごとに当番表を分けたい場合は以下のような構成になります。
+
+`マッピングファイルを用いるとSNSTopic名と当番表ファイルの紐付けが可能`なので、
+案件ごとにLambdaやAmazonConnectを作らなくて済みます。
 
 ![mapping](./assets/mapping.dio.svg)
 
-マッピングファイルを用いると、SNSTopic名と当番表ファイルの紐付けが可能なので、
-案件ごとにLambdaやAmazonConnectを作らなくて済みます。
-
-
 ## 前提条件
 
+### AmazonConnect
 
-- AmazonConnectの設定が完了していること
+AmazonConnectの設定が完了していること。
 
 ### S3
 
-電話番号情報ファイルを格納するS3が存在すること
+電話番号情報ファイルを格納するS3バケットが存在すること。
+また以下のオブジェクトを準備する必要があります。
 
-### 当番表(PHONE_NUMBER_JSON_FILE)
+#### 当番表(PHONE_NUMBER_JSON_FILE)
 
 コール先の電話番号情報を定義する必要があります。jsonファイルとしてS3バケットに格納してください。
 
@@ -58,6 +61,8 @@ Amazon Connectを使用し、指定された電話番号へ電話をかけアラ
 
 なお、旧フォーマットも対応しています。
 
+※旧フォーマットは、
+
 |項目|タイプ|説明|例|
 |:--|:--:|:--|:--|
 |`groupX`|`map`|電話対応のグループ、命名は必ずこの通りに従ってください。|`group1`, `group2`|
@@ -67,7 +72,7 @@ Amazon Connectを使用し、指定された電話番号へ電話をかけアラ
 
 例: [phoneNumber_old.json](./samplejson/phoneNumber_old.json)
 
-### マッピングファイル
+#### マッピングファイル
 
 SNSTopicと当番表ファイルの紐付け一覧です。
 案件(SNSTopic)毎に違う当番表を使用したい場合、マッピングファイルが必要になります。
@@ -80,14 +85,9 @@ SNSTopicと当番表ファイルの紐付け一覧です。
 
 例: [mapping.json](./samplejson/mapping.json)
 
-
-
-### AmazonConnect
-
 ### IAM Policy
 
-
-Lambdaに以下の権限を付与する必要があります。
+当Lambdaに以下の権限を付与する必要があります。
 
 ```json
 {
@@ -119,22 +119,9 @@ Lambdaに以下の権限を付与する必要があります。
 }
 ```
 
-## 必要なファイル
-
-
-## event
-
-Amazon SNS メッセージイベントは以下の参照してください。
-
-[Amazon SNS でのAWS Lambdaの使用](https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/with-sns.html)
-
-当Lambdaでは、案件(SNSTopic)毎に違う当番表を使用したい場合にのみ、イベント情報のTopicArnが必要になります。
-
-## returns
-
-`None`
-
 ## 環境変数
+
+Lambdaに付与できる(すべき)環境変数は以下の通りです。
 
 |Parameter|Description|Defaualt|Required|
 |:--|:--|:--|:--:|
@@ -147,25 +134,31 @@ Amazon SNS メッセージイベントは以下の参照してください。
 |`CONNECT_INSTANCE_ID`|AamzonConnectインスタンスID|-|yes|
 |`CONNECT_SOURCE_PHONE_NUMBER`|AmazonConnect発信元電話番号|-|yes|
 |`PHONE_NUMBER_BUCKET`|当番表が配置されているS3バケット名|-|yes|
-|`PHONE_NUMBER_JSON_FILE`|当番表のオブジェクト名|`phoneNumber.json`|yes|
+|`PHONE_NUMBER_JSON_FILE`|当番表のオブジェクト名。環境変数MAPPING_JSON_FILEが設定されている場合は無視されます。|`phoneNumber.json`|yes|
 |`MAPPING_JSON_FILE`|SNSTopicと当番表ファイルの紐付け一覧|-|no|
 
+## 詳細
 
+### Event
 
+Amazon SNS メッセージイベントは以下の参照してください。
 
+[Amazon SNS でのAWS Lambdaの使用](https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/with-sns.html)
 
+当Lambdaでは、案件(SNSTopic)毎に違う当番表を使用したい場合にのみ、イベント情報のTopicArnが必要になります。
 
+### Return
 
+None
 
+## ローカルテスト
 
+### 環境変数の設定
 
-
-
-# ローカルテスト
-## 環境変数の設定
 上記 環境環境 を参考に、それぞれの環境に合わせて `docker-compose.yamlのenvironment`及びを修正、`.env`ファイルを作成します。
 
 ### .env のサンプル
+
 ```conf
 CONNECT_ALARM_MSG=XXシステムで障害が発生しました。詳しくはSlackを確認してください。
 CONNECT_CONTACT_FLOW_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
@@ -175,16 +168,18 @@ CONNECT_SOURCE_PHONE_NUMBER=+81xxxxxxxxxx
 PHONE_NUMBER_BUCKET=xx-connect-s3
 ```
 
-## コンテナ起動
+### コンテナ起動
+
 ```bash
 docker-compose up
 ```
 
-## リクエスト
+### リクエスト
+
 ```bash
 curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{}'
 ```
 
+## Licence
 
-# Licence
 MIT
